@@ -1,5 +1,6 @@
 var expect = require('expect.js');
 var util = require('util');
+var _ = require('underscore');
 
 // Multiplcation!
 function multiply(x, y) {
@@ -25,6 +26,12 @@ tests.push({
     it: 'handles negative numbers',
     expect: -2,
     args: [1, -2]
+  }, {
+    it: 'can support calling a custom function for testing',
+    expect: function(result) {
+      expect(result).to.equal(2);
+    },
+    args: [1, 2]
   }]
 });
 
@@ -36,12 +43,22 @@ tests.push({
     it: 'can multiple two numbers later :)',
     expect: 2,
     args: [1, 2]
+  }, {
+    it: 'can multiple two numbers later asserting with a custom function',
+    expect: function(result) {
+      expect(result).to.equal(10);
+    },
+    args: [5, 2]
   }]
 });
 
 var setupSyncIt = function(test, it_item) {
   return function() {
-    expect(test.describe.apply(this, it_item.args)).to.equal(it_item.expect);
+    if (_.isFunction(it_item.expect)) {
+      it_item.expect(test.describe.apply(this, it_item.args));
+    } else {
+      expect(test.describe.apply(this, it_item.args)).to.equal(it_item.expect);
+    }
   };
 };
 
@@ -49,10 +66,17 @@ var setupAsyncIt = function(test, it_item) {
   var args = it_item.args;
 
   return function(done) {
-    args.push(function(result) {
-      expect(result).to.equal(it_item.expect);
-      done();
-    });
+    if (_.isFunction(it_item.expect)) {
+      args.push(function(result) {
+        it_item.expect(result);
+        done();
+      });
+    } else {
+      args.push(function() {
+        expect(arguments[0]).to.equal(it_item.expect);
+        done();
+      });
+    }
 
     test.describe.apply(this, args);
   };
